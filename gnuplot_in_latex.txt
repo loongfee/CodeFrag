@@ -1,0 +1,20 @@
+*********gnuplot
+set terminal postscript eps color colortex lw 2
+set terminal postscript eps font "Times-Roman,15"
+set output "rotation.eps"
+
+plot "rotation.dat" using 1:2 title 'Initial angle 0' with linespoints lw 2, \
+     "rotation.dat" using 1:3 title 'Initial angle 90' with linespoints lw 2, \
+     "rotation.dat" using 1:4 title 'Initial angle 180' with linespoints lw 2,\
+     "rotation.dat" using 1:5 title 'Initial angle 270' with linespoints lw 2
+
+set output
+
+
+***********Latex
+先加入epstopdf宏包（epstopdf宏包的详细信息可查看……）：
+\usepackage{graphicx}
+\usepackage{epstopdf}
+再用：
+\includegraphics{pic.eps}   %可以包含eps扩展名，但是必须同时有pic.pdf文件存在。
+

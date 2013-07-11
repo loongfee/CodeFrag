@@ -1,0 +1,49 @@
+
+		GDALAllRegister();
+		double adfGeoTransform[6];
+		char *pszTargetSRS_mul = NULL;
+		GDALDataset* poSrc	= (GDALDataset*) GDALOpen(new_layer_file.toAscii(), GA_ReadOnly);
+
+		GDALDataType iDataType = poSrc->GetRasterBand(1)->GetRasterDataType();
+		int iWidth = poSrc->GetRasterXSize();
+		int iHeight = poSrc->GetRasterYSize();
+		int iBandCount = poSrc->GetRasterCount();
+		poSrc->GetGeoTransform( adfGeoTransform );			
+		pszTargetSRS_mul = CPLStrdup(GDALGetProjectionRef(poSrc));//获取全色图像相关信息
+
+
+		GDALDriver *poDriver;	//驱动，用于创建新的文件
+		poDriver=GetGDALDriverManager()->GetDriverByName("GTIFF");
+		char **papszMetadata = poDriver->GetMetadata();//获取格式类型
+		GDALDataset *poDatasetNew;
+		poDatasetNew = poDriver->Create(out_layer_file.toAscii(), iWidth, iHeight, iBandCount, (GDALDataType) iDataType, papszMetadata);//根据文件路径文件名，图像宽，高，波段数，数据类型，文件类型，创建新的数据集				
+		poDatasetNew->SetProjection(pszTargetSRS_mul);
+		poDatasetNew->SetGeoTransform(adfGeoTransform);//坐标赋值,与全色相同
+
+		BYTE *pafScanNew = new BYTE[iWidth * iHeight * iBandCount];
+		CopyDataFromOpenCVToGDAL(change_image, &pafScanNew);
+		//cv::imwrite("E:\\debug.tif", change_image);
+
+		//FILE *pf = fopen("E:\\debug.txt", "w+");
+		//for (int i = 0;i < 200;++i)
+		//{
+		//	for (int j = 0;j < 200;++j)
+		//	{
+		//		for (int k = 0;k < iBandCount;++k)
+		//		{
+		//			fprintf(pf, "%d ", (int)pafScanNew[i * iWidth * iBandCount + j * iBandCount + k]);
+		//		}
+		//	}
+		//	fprintf(pf, "\n");
+		//}
+		//fclose(pf);
+		//return;
+		int panBandMap [3] = {3,2,1};	//按照BGR BGR BGR ... 来读取数据组织
+		//poDatasetNew->RasterIO(GF_Write, 0, 0, iWidth, iHeight, pafScanNew, iWidth, iHeight,\
+		//	(GDALDataType) iDataType, iBandCount, panBandMap, iDataType*iBandCount, iDataType*iWidth*iBandCount, iDataType);	//全部读取进来
+
+		delete []pafScanNew;
+
+		GDALClose(poSrc);
+		GDALClose(poDatasetNew);
+		GDALDestroyDriverManager();

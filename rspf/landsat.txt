@@ -1,0 +1,139 @@
+// file rspfLandSatModel.h
+1. 在    enum ProjectionType中添加：
+
+	  TM_MAP,
+	  TM_ORBIT
+2. 添加protected:
+
+   double			m_scale;
+   double			m_centerLongitude;
+   double			m_theMapoffsetX;
+   double		    m_theMapoffsetY;
+   double			semi_major,semi_minor;
+
+
+// file rspfLandSatModel.cpp or rspfLandSatModel.cc
+3. 添加：
+#include <rspf/projection/rspfTransMercatorProjection.h>
+以及
+static const char*  MAP_SCALE_KW        = "theMapScale";
+static const char*  MAP_CENTER_LONGITUDE_KW        = "theMapCenterLongitude";
+static const char*  MAP_OFFSET_LONGITUDE_KW        = "theMapoffsetX";
+static const char*  MAP_OFFSET_LATITUDE_KW        = "theMapoffsetY";
+static const char*  MAP_SEMI_MAJOR_KW        = "theMapSemiMajorX";
+static const char*  MAP_SEMI_MINOR_KW        = "theMapSemiMinorY";
+
+4. 在static const char* PROJ_TYPE[]中添加：
+	"TM_MAP",
+	"TM_ORBIT"
+
+5. 在函数 void rspfLandSatModel::initFromHeader(const rspfFfL7& head)中添加TM投影的支持
+添加：
+   m_scale=head.theProjectionParams[2];
+   m_centerLongitude=(int)(head.theProjectionParams[4]+0.01)*1.0;
+   m_theMapoffsetX=head.theProjectionParams[6];
+   m_theMapoffsetY=head.theProjectionParams[5];
+   semi_major=head.theProjectionParams[0];
+   semi_minor=head.theProjectionParams[1];
+以及
+   else if (!proj_type.compare("TM"))
+   {
+	   if (orient_type.contains("ORBIT"))
+		   theProjectionType  = TM_ORBIT;
+	   else
+		   theProjectionType = TM_MAP;
+   }
+
+6. 在 std::ostream& rspfLandSatModel::print(std::ostream& os) const 中添加：
+	<< "\n         m_scale: " << m_scale
+	<< "\n     m_centerLongitude: " << m_centerLongitude
+	<< "\n         m_theMapoffsetX: " << m_theMapoffsetX
+	<< "\n     m_theMapoffsetY: " << m_theMapoffsetY
+	<< "\n         semi_major: " << semi_major
+	<< "\n     semi_minor: " << semi_minor
+
+7. 在bool rspfLandSatModel::saveState(rspfKeywordlist& kwl,
+                              const char* prefix) const中添加：
+
+8. 在bool rspfLandSatModel::loadState(const rspfKeywordlist& kwl,
+                                  const char* prefix) 中添加：
+
+   keyword = MAP_SCALE_KW;
+   value = kwl.find(prefix, keyword);
+   if (!value)
+     {
+       theErrorStatus++;
+       return false;
+     }
+   m_scale = atof(value);
+   keyword = MAP_CENTER_LONGITUDE_KW;
+   value = kwl.find(prefix, keyword);
+   if (!value)
+     {
+       theErrorStatus++;
+       return false;
+     }
+   m_centerLongitude = atof(value);
+      keyword = MAP_OFFSET_LONGITUDE_KW;
+   value = kwl.find(prefix, keyword);
+   if (!value)
+     {
+       theErrorStatus++;
+       return false;
+     }
+   m_theMapoffsetX = atof(value);
+      keyword = MAP_OFFSET_LATITUDE_KW;
+   value = kwl.find(prefix, keyword);
+   if (!value)
+     {
+       theErrorStatus++;
+       return false;
+     }
+   m_theMapoffsetY = atof(value);
+         keyword = MAP_SEMI_MAJOR_KW;
+   value = kwl.find(prefix, keyword);
+   if (!value)
+     {
+       theErrorStatus++;
+       return false;
+     }
+   semi_major = atof(value);
+         keyword = MAP_SEMI_MINOR_KW;
+   value = kwl.find(prefix, keyword);
+   if (!value)
+     {
+       theErrorStatus++;
+       return false;
+     }
+   semi_minor= atof(value);
+   
+   }
+
+   kwl.add(prefix, MAP_SCALE_KW,    m_scale, true);
+   kwl.add(prefix, MAP_CENTER_LONGITUDE_KW, m_centerLongitude, true);
+   kwl.add(prefix, MAP_OFFSET_LONGITUDE_KW,    m_theMapoffsetX, true);
+   kwl.add(prefix, MAP_OFFSET_LATITUDE_KW, m_theMapoffsetY, true);
+   kwl.add(prefix, MAP_SEMI_MAJOR_KW,    semi_major, true);
+   kwl.add(prefix, MAP_SEMI_MINOR_KW, semi_minor, true);
+
+9.在函数 void rspfLandSatModel::initMapProjection()中添加：
+
+   else if (theProjectionType == TM_MAP || theProjectionType == TM_ORBIT)
+   {
+	   // rspfGpt origintm(theProjectionParams[3],theProjectionParams[4]);
+	   //   rspfGpt origintm(0.0,0.0);//ww0712
+	   // theMapZone=(int)((m_centerLongitude+3)/6);
+	   rspfTransMercatorProjection* transMerc1 = new rspfTransMercatorProjection(rspfEllipsoid(semi_major, semi_minor),(int)((m_centerLongitude+3)/6));
+	   transMerc1->setParameters(m_theMapoffsetX,m_theMapoffsetY,m_scale);
+	   transMerc1->setZone((int)((m_centerLongitude+3)/6));
+	   transMerc1->update();
+	   theMapProjection = transMerc1;
+   }
+10. 在函数 void  rspfLandSatModel::updateModel()中添加：
+
+   else if (theProjectionType == TM_ORBIT)
+   {
+	 theMapAzimCos = rspf::cosd(-theMapAzimAngle + theMapRotation);
+     theMapAzimSin = rspf::sind(-theMapAzimAngle + theMapRotation);
+   
+   }
